@@ -3,20 +3,13 @@ import { GPUMonitor } from './components/GPUMonitor.js'
 import { ControlPanel } from './components/ControlPanel.js'
 import { PerformanceChart } from './components/PerformanceChart.js'
 import { StatusBar } from './components/StatusBar.js'
+import { GPUSimulator } from './utils/GPUSimulator.js'
 
 class AfterburnerApp {
   constructor() {
-    this.gpuData = {
-      temperature: 65,
-      coreClockOffset: 0,
-      memoryClockOffset: 0,
-      powerLimit: 100,
-      fanSpeed: 45,
-      voltage: 1.2,
-      usage: 78,
-      memoryUsage: 3.2,
-      totalMemory: 4.0
-    }
+    this.gpuSimulator = new GPUSimulator()
+    this.updateInterval = null
+    this.isMonitoring = false
     
     this.init()
     this.startMonitoring()
@@ -68,7 +61,8 @@ class AfterburnerApp {
   bindEvents() {
     // Control panel events
     this.controlPanel.onSettingsChange = (settings) => {
-      this.updateGPUSettings(settings)
+      this.gpuSimulator.updateSettings(settings)
+      this.addSystemLog('Settings applied successfully')
     }
 
     // Window controls
@@ -81,41 +75,83 @@ class AfterburnerApp {
     document.getElementById('minimize').addEventListener('click', () => {
       document.querySelector('.afterburner-container').classList.toggle('minimized')
     })
+    
+    // Add monitoring toggle
+    const monitoringToggle = document.createElement('button')
+    monitoringToggle.className = 'btn-icon'
+    monitoringToggle.id = 'monitoring-toggle'
+    monitoringToggle.innerHTML = '⏸'
+    monitoringToggle.title = 'Pause/Resume Monitoring'
+    document.querySelector('.header-controls').insertBefore(monitoringToggle, document.getElementById('settings'))
+    
+    monitoringToggle.addEventListener('click', () => {
+      this.toggleMonitoring()
+    })
   }
 
-  updateGPUSettings(settings) {
-    Object.assign(this.gpuData, settings)
-    this.simulateGPUResponse()
+  toggleMonitoring() {
+    const toggleBtn = document.getElementById('monitoring-toggle')
+    
+    if (this.isMonitoring) {
+      this.stopMonitoring()
+      toggleBtn.innerHTML = '▶'
+      toggleBtn.title = 'Resume Monitoring'
+      this.addSystemLog('Monitoring paused')
+    } else {
+      this.startMonitoring()
+      toggleBtn.innerHTML = '⏸'
+      toggleBtn.title = 'Pause Monitoring'
+      this.addSystemLog('Monitoring resumed')
+    }
   }
 
-  simulateGPUResponse() {
-    // Simulate GPU response to settings changes
-    const { coreClockOffset, memoryClockOffset, powerLimit } = this.gpuData
-    
-    // Temperature increases with higher clocks and power
-    const tempIncrease = (Math.abs(coreClockOffset) * 0.01) + (Math.abs(memoryClockOffset) * 0.005) + ((powerLimit - 100) * 0.1)
-    this.gpuData.temperature = Math.min(95, 65 + tempIncrease + (Math.random() * 5 - 2.5))
-    
-    // Usage fluctuates
-    this.gpuData.usage = Math.max(0, Math.min(100, this.gpuData.usage + (Math.random() * 10 - 5)))
-    
-    // Memory usage changes slightly
-    this.gpuData.memoryUsage = Math.max(0, Math.min(this.gpuData.totalMemory, 
-      this.gpuData.memoryUsage + (Math.random() * 0.2 - 0.1)))
+  addSystemLog(message) {
+    const logContainer = document.getElementById('monitoring-log')
+    if (logContainer) {
+      const now = new Date().toLocaleTimeString()
+      const logEntry = document.createElement('div')
+      logEntry.className = 'log-entry info'
+      logEntry.innerHTML = `
+        <span class="log-time">[${now}]</span>
+        <span class="log-message">${message}</span>
+      `
+      logContainer.appendChild(logEntry)
+      logContainer.scrollTop = logContainer.scrollHeight
+    }
   }
 
   startMonitoring() {
-    setInterval(() => {
-      this.simulateGPUResponse()
+    if (this.updateInterval) {
+      clearInterval(this.updateInterval)
+    }
+    
+    this.isMonitoring = true
+    this.updateInterval = setInterval(() => {
       this.updateComponents()
-    }, 1000)
+    }, 500) // Update every 500ms for smoother real-time feel
+  }
+  
+  stopMonitoring() {
+    this.isMonitoring = false
+    if (this.updateInterval) {
+      clearInterval(this.updateInterval)
+      this.updateInterval = null
+    }
   }
 
   updateComponents() {
-    this.gpuMonitor.update(this.gpuData)
-    this.controlPanel.update(this.gpuData)
-    this.performanceChart.addDataPoint(this.gpuData)
-    this.statusBar.update(this.gpuData)
+    const gpuData = this.gpuSimulator.update()
+    const detailedStatus = this.gpuSimulator.getDetailedStatus()
+    
+    const fullData = {
+      ...gpuData,
+      detailedStatus
+    }
+    
+    this.gpuMonitor.update(fullData)
+    this.controlPanel.update(fullData)
+    this.performanceChart.addDataPoint(fullData)
+    this.statusBar.update(fullData)
   }
 }
 

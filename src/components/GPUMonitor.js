@@ -75,12 +75,19 @@ export class GPUMonitor {
   }
 
   update(data) {
+    const status = data.detailedStatus || {}
+    
     // Update temperature
     const tempValue = document.querySelector('#gpu-temp .value')
     const tempBar = document.querySelector('.temp-bar')
     tempValue.textContent = Math.round(data.temperature)
     tempBar.style.width = `${Math.min(100, (data.temperature / 100) * 100)}%`
-    tempBar.className = `bar-fill temp-bar ${data.temperature > 80 ? 'critical' : data.temperature > 70 ? 'warning' : ''}`
+    
+    // Update temperature bar styling based on status
+    let tempClass = 'bar-fill temp-bar'
+    if (status.thermalStatus === 'critical') tempClass += ' critical'
+    else if (status.thermalStatus === 'warning') tempClass += ' warning'
+    tempBar.className = tempClass
 
     // Update usage
     const usageValue = document.querySelector('#gpu-usage .value')
@@ -104,10 +111,44 @@ export class GPUMonitor {
     const voltageValue = document.querySelector('#core-voltage .value')
     voltageValue.textContent = data.voltage.toFixed(3)
 
-    // Update power draw (simulated)
+    // Update power draw
     const powerValue = document.querySelector('#power-draw .value')
-    const basePower = 65
-    const powerIncrease = (data.powerLimit - 100) * 0.5 + (data.usage * 0.3)
-    powerValue.textContent = Math.round(basePower + powerIncrease)
+    powerValue.textContent = Math.round(data.powerDraw)
+    
+    // Add workload type indicator
+    this.updateWorkloadIndicator(data.workloadType, data.workloadIntensity)
+  }
+  
+  updateWorkloadIndicator(workloadType, intensity) {
+    let indicator = document.querySelector('.workload-indicator')
+    if (!indicator) {
+      // Create workload indicator if it doesn't exist
+      const monitorGrid = document.querySelector('.monitor-grid')
+      const indicatorHTML = `
+        <div class="monitor-item workload-indicator">
+          <div class="monitor-label">Workload Type</div>
+          <div class="monitor-value">
+            <span class="workload-type">Idle</span>
+            <span class="workload-intensity">20%</span>
+          </div>
+          <div class="monitor-bar">
+            <div class="bar-fill workload-bar" style="width: 20%"></div>
+          </div>
+        </div>
+      `
+      monitorGrid.insertAdjacentHTML('beforeend', indicatorHTML)
+      indicator = document.querySelector('.workload-indicator')
+    }
+    
+    const typeElement = indicator.querySelector('.workload-type')
+    const intensityElement = indicator.querySelector('.workload-intensity')
+    const barElement = indicator.querySelector('.workload-bar')
+    
+    typeElement.textContent = workloadType.charAt(0).toUpperCase() + workloadType.slice(1)
+    intensityElement.textContent = Math.round(intensity * 100) + '%'
+    barElement.style.width = `${intensity * 100}%`
+    
+    // Color code based on workload type
+    barElement.className = `bar-fill workload-bar ${workloadType}`
   }
 }
