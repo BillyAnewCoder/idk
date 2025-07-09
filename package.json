@@ -13,6 +13,6 @@
   },
   "dependencies": {
     "chart.js": "^4.4.0",
-    "lucide-icons": "^0.263.1"
+    "lucide": "^0.263.1"
   }
 }
