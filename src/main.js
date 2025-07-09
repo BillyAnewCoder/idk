@@ -4,11 +4,15 @@ import { ControlPanel } from './components/ControlPanel.js'
 import { PerformanceChart } from './components/PerformanceChart.js'
 import { StatusBar } from './components/StatusBar.js'
 import { GPUSimulator } from './utils/GPUSimulator.js'
+import { SystemMonitor } from './utils/SystemMonitor.js'
+import { SystemInfo } from './components/SystemInfo.js'
 
 class AfterburnerApp {
   constructor() {
     this.gpuSimulator = new GPUSimulator()
+    this.systemMonitor = new SystemMonitor()
     this.updateInterval = null
+    this.systemInterval = null
     this.isMonitoring = false
     
     this.init()
@@ -38,6 +42,7 @@ class AfterburnerApp {
           <div class="left-panel">
             <div id="gpu-monitor"></div>
             <div id="control-panel"></div>
+            <div id="system-info"></div>
           </div>
           
           <div class="right-panel">
@@ -53,6 +58,7 @@ class AfterburnerApp {
     this.controlPanel = new ControlPanel(document.getElementById('control-panel'), this.gpuData)
     this.performanceChart = new PerformanceChart(document.getElementById('performance-chart'))
     this.statusBar = new StatusBar(document.getElementById('status-bar'))
+    this.systemInfo = new SystemInfo(document.getElementById('system-info'))
 
     // Bind events
     this.bindEvents()
@@ -129,6 +135,18 @@ class AfterburnerApp {
     this.updateInterval = setInterval(() => {
       this.updateComponents()
     }, 500) // Update every 500ms for smoother real-time feel
+    
+    // Start system monitoring
+    if (this.systemMonitor.isSupported) {
+      this.systemInterval = this.systemMonitor.startMonitoring((metrics) => {
+        this.systemInfo.update(metrics)
+        
+        // Use real system data to influence simulation if available
+        if (metrics.simulatedGPU) {
+          this.gpuSimulator.updateFromSystemMetrics(metrics.simulatedGPU)
+        }
+      }, 2000) // Update every 2 seconds
+    }
   }
   
   stopMonitoring() {
@@ -136,6 +154,11 @@ class AfterburnerApp {
     if (this.updateInterval) {
       clearInterval(this.updateInterval)
       this.updateInterval = null
+    }
+    
+    if (this.systemInterval) {
+      this.systemMonitor.stopMonitoring(this.systemInterval)
+      this.systemInterval = null
     }
   }
 

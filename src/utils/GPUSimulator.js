@@ -28,11 +28,25 @@ export class GPUSimulator {
     
     this.thermalHistory = []
     this.startTime = Date.now()
+    this.systemMetrics = null
   }
 
   updateSettings(newSettings) {
     this.settings = { ...this.settings, ...newSettings }
     this.simulateSettingsImpact()
+  }
+  
+  updateFromSystemMetrics(systemGPU) {
+    this.systemMetrics = systemGPU
+    
+    // Blend system metrics with simulation for more realistic data
+    if (systemGPU.memoryUsage) {
+      this.currentData.memoryUsage = (this.currentData.memoryUsage * 0.7) + (systemGPU.memoryUsage * 0.3)
+    }
+    
+    if (systemGPU.temperature) {
+      this.currentData.temperature = (this.currentData.temperature * 0.8) + (systemGPU.temperature * 0.2)
+    }
   }
 
   simulateSettingsImpact() {
