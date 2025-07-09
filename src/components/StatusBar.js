@@ -212,7 +212,10 @@ export class StatusBar {
     container.appendChild(logEntry)
     container.scrollTop = container.scrollHeight
   }
-}
+
+  updateThermalStatus(data, thermalStatus) {
+    if (data.temperature > 85) {
+      thermalStatus.textContent = 'Hot'
       thermalStatus.className = 'status-value warning'
     } else if (data.temperature > 75) {
       thermalStatus.textContent = 'Warm'
